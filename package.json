@@ -1,0 +1,30 @@
+{
+  "name": "mirror-interactions-chrome-extension",
+  "displayName": "Mirror viewport interactions",
+  "description": "Chrome extension to mirror viewport interactions across multiple tabs",
+  "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:davidenke/mirror-interactions-chrome-extension.git"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "2.0.0-beta.30",
+    "@enke.dev/lint": "0.4.3",
+    "@types/node": "22.10.7",
+    "autoprefixer": "10.4.20",
+    "chrome-types": "0.1.333",
+    "eslint": "9.18.0",
+    "jiti": "2.4.2",
+    "prettier": "3.4.2",
+    "typescript": "5.7.3",
+    "vite": "6.0.11",
+    "vite-plugin-checker": "0.8.0"
+  },
+  "scripts": {
+    "lint": "eslint",
+    "dev": "vite",
+    "build": "vite build"
+  }
+}
