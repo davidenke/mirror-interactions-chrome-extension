@@ -16,6 +16,13 @@ export default defineManifest(async env => ({
   version: `${major}.${minor}.${patch}.${label}`,
   version_name: version,
 
+  icons: {
+    16: 'icons/icon-send-16.png',
+    32: 'icons/icon-send-32.png',
+    48: 'icons/icon-send-48.png',
+    128: 'icons/icon-send-128.png',
+  },
+
   action: { default_state: 'enabled' },
   background: {
     service_worker: 'src/background.ts',
