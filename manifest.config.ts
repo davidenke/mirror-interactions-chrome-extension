@@ -16,19 +16,11 @@ export default defineManifest(async env => ({
   version: `${major}.${minor}.${patch}.${label}`,
   version_name: version,
 
-  // action: { default_popup: 'src/popup/index.html' },
+  action: { default_state: 'enabled' },
   background: {
     service_worker: 'src/background.ts',
     type: 'module',
   },
-  content_scripts: [
-    {
-      all_frames: false,
-      js: ['src/content.ts'],
-      matches: ['*://*/*'],
-      run_at: 'document_end',
-    },
-  ],
-  host_permissions: ['<all_urls>'],
-  permissions: ['activeTab', 'tabs', 'scripting', 'storage'],
+  host_permissions: ['*://*/*'],
+  permissions: ['activeTab', 'debugger', 'nativeMessaging', 'scripting', 'storage', 'tabs'],
 }));
