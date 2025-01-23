@@ -33,7 +33,7 @@ export default defineManifest(async env => ({
       all_frames: false,
       js: ['src/content.ts'],
       matches: ['*://*/*'],
-      run_at: 'document_end',
+      run_at: 'document_start',
     },
   ],
   host_permissions: ['*://*/*'],

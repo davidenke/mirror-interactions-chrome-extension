@@ -38,5 +38,8 @@ chrome.runtime.onMessage.addListener((message: Message) => {
 });
 
 // ask initially for the current mode
-const response = await chrome.runtime.sendMessage({ type: 'MICE_Which' } as Which);
-handleModeChange((response as Mode).payload.mode);
+document.addEventListener(
+  'DOMContentLoaded',
+  () => chrome.runtime.sendMessage({ type: 'MICE_Which' } as Which),
+  { once: true, passive: true },
+);
