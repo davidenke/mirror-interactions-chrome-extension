@@ -32,10 +32,12 @@ export async function setReceivingTab(tabId: number, disconnect: () => void) {
   const transport = await ExtensionTransport.connectTab(tabId);
   const browser = await connect({ transport, defaultViewport: null });
   browser.on('disconnected', () => disconnect());
+  console.info(`[MICE] pulling the strings: ${tabId}`);
   _receivingTabs.set(tabId, browser);
 }
 
 export function deleteReceivingTab(tabId: number) {
+  if (_receivingTabs.has(tabId)) console.info(`[MICE] loosing strings: ${tabId}`);
   _receivingTabs.get(tabId)?.disconnect();
   _receivingTabs.delete(tabId);
 }

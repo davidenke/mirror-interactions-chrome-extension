@@ -62,9 +62,6 @@ export function startSend() {
     // remove all listeners
     listeners.forEach((fn, name) => window.removeEventListener(name, fn));
   };
-
-  // clean up when content script gets disconnected
-  chrome.runtime.connect().onDisconnect.addListener(() => window.___MICE_send?.());
 }
 
 /**

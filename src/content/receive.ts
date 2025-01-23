@@ -51,7 +51,7 @@ export function startReceive() {
 
   // start receiving events
   const receiveListener = (message: Message) => {
-    switch (message.type) {
+    switch (message?.type) {
       case 'MICE_Cursor': {
         const { x, y } = message.payload;
         cursor.style.display = 'block';
@@ -103,9 +103,6 @@ export function startReceive() {
     // Honestly, I didn't touch anything here...
     delete window.___MICE_receive;
   };
-
-  // clean up when content script gets disconnected
-  chrome.runtime.connect().onDisconnect.addListener(() => window.___MICE_receive?.());
 }
 
 /**
