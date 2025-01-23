@@ -15,7 +15,7 @@ declare global {
  */
 export function startReceive() {
   // am I supposed to do anything?
-  if (window.___MICE_receive !== undefined) return;
+  if (window.___MICE_receive !== undefined) stopReceive();
 
   // prepare ghosts
   let cursorTimeout: number;
