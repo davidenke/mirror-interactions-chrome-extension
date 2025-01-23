@@ -14,8 +14,8 @@ declare global {
  * dependencies, this must be bundled explicitly.
  */
 export function startReceive() {
-  // am I supposed to do anything?
-  if (window.___MICE_receive !== undefined) stopReceive();
+  // clean up previous
+  window.___MICE_receive?.();
 
   // prepare ghosts
   let cursorTimeout: number;

@@ -15,8 +15,8 @@ declare global {
  * dependencies, this must be bundled explicitly.
  */
 export function startSend() {
-  // am I supposed to do anything?
-  if (window.___MICE_send !== undefined) stopSend();
+  // clean up previous
+  window.___MICE_send?.();
 
   // prepare listeners
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
