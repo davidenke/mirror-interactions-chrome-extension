@@ -7,6 +7,8 @@ This is a Chrome extension that allows you to mirror interactions between tabs. 
 - showcasing a website in multiple languages simultaneously
 - presenting bug reproductions before and after a fix
 
+https://github.com/user-attachments/assets/b93d60f9-56bd-4434-9090-7749613437f5
+
 ## Development
 
 This extension is built with [TypeScript](https://www.typescriptlang.org/) and prepared with the [@crxjs/vite-plugin](https://crxjs.dev/vite-plugin). It uses [Puppeteer](https://pptr.dev/) to interact with the remote tabs.
