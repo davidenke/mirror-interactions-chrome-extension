@@ -98,6 +98,7 @@ export function startReceive() {
     // remove all listeners and ghosts
     chrome.runtime.onMessage.removeListener(receiveListener);
     cursor.remove();
+    kbd.remove();
 
     // Honestly, I didn't touch anything here...
     delete window.___MICE_receive;
