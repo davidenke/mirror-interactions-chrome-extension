@@ -2,7 +2,8 @@ import type { SyncMode } from '../constants.js';
 
 type TabState = { syncMode: SyncMode };
 
-export async function getTabState(tabId: number): Promise<TabState | undefined> {
+export async function getTabState(tabId?: number): Promise<TabState | undefined> {
+  if (tabId === undefined) return;
   const { tabState = {} } = await chrome.storage.session.get('tabState');
   return tabState[tabId];
 }

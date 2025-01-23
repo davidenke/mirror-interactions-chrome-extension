@@ -25,7 +25,11 @@ To get started, clone this repository and make sure you have the correct [Node.j
 
 ```bash
 nvm install
+# once installed, use
+nvm use
+
 # .nvmrc files are not supported on Windows, so use this instead:
+nvm install $(cat .nvmrc)
 nvm use $(cat .nvmrc)
 ```
 

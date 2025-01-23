@@ -5,10 +5,8 @@ import {
 } from 'puppeteer-core/lib/esm/puppeteer/puppeteer-core-browser.js';
 
 import { getTabState, removeTabState, setIcon, setTabState } from './background/tab-state.js';
-import type { Message, SyncMode } from './constants.js';
-import { ALLOWED_PROTOCOLS, COMMAND_KEYS, PREFIX, prefix, SYNC_MODE } from './constants.js';
-import { startReceive, stopReceive } from './mode/receive.js';
-import { startSend, stopSend } from './mode/send.js';
+import type { Message, Mode, SyncMode } from './constants.js';
+import { ALLOWED_PROTOCOLS, PREFIX, prefix, SYNC_MODE } from './constants.js';
 
 // while individual tab states are persisted in session storage,
 // the currently receiving tabs are stored in memory along with
@@ -26,43 +24,20 @@ export async function setSyncMode(tabId: number, mode: SyncMode) {
     return setIcon(tabId, 'disabled');
   }
 
-  // run associated mode logic to inject the content script
-  switch (mode) {
-    case 'receive': {
-      // connect puppeteer to the receiving tab and prevent the viewport from being resized
-      // https://github.com/puppeteer/puppeteer/issues/3688#issuecomment-453218745
-      const transport = await ExtensionTransport.connectTab(tabId);
-      const browser = await connect({ transport, defaultViewport: null });
-      browser.on('disconnected', () => setSyncMode(tabId, 'off'));
-      receivingTabs.set(tabId, browser);
-
-      await chrome.scripting.executeScript({ target: { tabId }, func: stopSend });
-      await chrome.scripting.executeScript({ target: { tabId }, func: startReceive });
-      break;
-    }
-
-    case 'send':
-      await receivingTabs.get(tabId)?.disconnect();
-      receivingTabs.delete(tabId);
-
-      await chrome.scripting.executeScript({ target: { tabId }, func: stopReceive });
-      await chrome.scripting.executeScript({
-        target: { tabId },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        func: startSend as any,
-        args: [COMMAND_KEYS],
-      });
-      break;
-
-    case 'off':
-    default:
-      await receivingTabs.get(tabId)?.disconnect();
-      receivingTabs.delete(tabId);
-
-      await chrome.scripting.executeScript({ target: { tabId }, func: stopReceive });
-      await chrome.scripting.executeScript({ target: { tabId }, func: stopSend });
-      break;
+  if (mode === 'receive') {
+    // connect puppeteer to the receiving tab and prevent the viewport from being resized
+    // https://github.com/puppeteer/puppeteer/issues/3688#issuecomment-453218745
+    const transport = await ExtensionTransport.connectTab(tabId);
+    const browser = await connect({ transport, defaultViewport: null });
+    browser.on('disconnected', () => setSyncMode(tabId, 'off'));
+    receivingTabs.set(tabId, browser);
+  } else {
+    await receivingTabs.get(tabId)?.disconnect();
+    receivingTabs.delete(tabId);
   }
+
+  // notify the content script about the new mode
+  chrome.tabs.sendMessage(tabId, { type: 'MICE_Mode', payload: { mode } } as Mode);
 
   // set the new state and icon
   await setTabState(tabId, { syncMode: mode });
@@ -79,8 +54,8 @@ export async function initializeTabState(tabId: number) {
 
 // remove the tab state and clean up when the tab is closed
 chrome.tabs.onRemoved.addListener(async tabId => {
-  await chrome.scripting.executeScript({ target: { tabId }, func: stopReceive });
-  await chrome.scripting.executeScript({ target: { tabId }, func: stopSend });
+  await receivingTabs.get(tabId)?.disconnect();
+  receivingTabs.delete(tabId);
   removeTabState(tabId);
 });
 
@@ -105,11 +80,22 @@ chrome.action?.onClicked.addListener(async tab => {
 });
 
 // proxy messages from sending to receiving content scripts
-chrome.runtime.onMessage.addListener((message: Message) => {
+chrome.runtime.onMessage.addListener((message: Message, { tab }, respond: (r: object) => void) => {
   // filter out events from foreign scopes
   if (!message.type.startsWith(PREFIX)) return;
 
   switch (message.type) {
+    // deliver the requested mode for the tab
+    case prefix('Which'):
+      if (!tab) return false;
+      (async () => {
+        const { syncMode = 'off' } = (await getTabState(tab.id)) ?? {};
+        respond({ type: 'MICE_Mode', payload: { mode: syncMode } } satisfies Mode);
+      })();
+
+      // no need to go further, just wait for the async response
+      return true;
+
     // handle cursor position
     case prefix('Cursor'):
       receivingTabs.forEach(async (browser, tabId) => {

@@ -28,6 +28,14 @@ export default defineManifest(async env => ({
     service_worker: 'src/background.ts',
     type: 'module',
   },
+  content_scripts: [
+    {
+      all_frames: false,
+      js: ['src/content.ts'],
+      matches: ['*://*/*'],
+      run_at: 'document_end',
+    },
+  ],
   host_permissions: ['*://*/*'],
   permissions: ['activeTab', 'debugger', 'nativeMessaging', 'scripting', 'storage', 'tabs'],
 }));

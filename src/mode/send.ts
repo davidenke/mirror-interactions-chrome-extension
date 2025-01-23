@@ -1,6 +1,7 @@
 import type { KeyInput } from 'puppeteer-core';
 
 import type { Click, CommandKey, Cursor, KeyCmd, KeyPress, Wheel } from '../constants.js';
+import { COMMAND_KEYS } from '../constants.js';
 
 declare global {
   interface Window {
@@ -13,7 +14,7 @@ declare global {
  * page context as content script; to use imports and/or external
  * dependencies, this must be bundled explicitly.
  */
-export function startSend(commandKeys: CommandKey[]) {
+export function startSend() {
   // am I supposed to do anything?
   if (window.___MICE_send !== undefined) return;
 
@@ -35,12 +36,12 @@ export function startSend(commandKeys: CommandKey[]) {
 
   listeners.set('keypress', (event: KeyboardEvent) => {
     const key = event.key as KeyInput;
-    if (commandKeys.includes(key as CommandKey)) return;
+    if (COMMAND_KEYS.includes(key as CommandKey)) return;
     chrome.runtime.sendMessage({ type: 'MICE_KeyPress', payload: { key } } satisfies KeyPress);
   });
   listeners.set('keydown', (event: KeyboardEvent) => {
     const { key, altKey, ctrlKey, metaKey, shiftKey } = event;
-    if (!commandKeys.includes(key as CommandKey)) return;
+    if (!COMMAND_KEYS.includes(key as CommandKey)) return;
     const payload = { key: key as CommandKey, altKey, ctrlKey, metaKey, shiftKey };
     chrome.runtime.sendMessage({ type: 'MICE_KeyCmd', payload } satisfies KeyCmd);
   });

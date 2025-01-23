@@ -17,10 +17,13 @@ export type Prefixed<T extends string> = `${typeof PREFIX}${T}`;
 export type Unfixed<T extends string> = T extends `${typeof PREFIX}${infer P}` ? P : never;
 export const prefix = <T extends Unfixed<Message['type']>>(t: T): Prefixed<T> => `${PREFIX}${t}`;
 
-type MessageShape<T extends string, P extends object> = Readonly<{
+type MessageShape<T extends string, P extends object | undefined> = {
   type: Prefixed<T>;
-  payload: P;
-}>;
+  payload: P extends object ? P : undefined;
+};
+
+export type Mode = MessageShape<'Mode', { mode: SyncMode }>;
+export type Which = MessageShape<'Which', undefined>;
 
 export type Click = MessageShape<'Click', { x: number; y: number }>;
 export type Cursor = MessageShape<'Cursor', { x: number; y: number }>;
@@ -31,4 +34,5 @@ export type KeyCmd = MessageShape<
 export type KeyPress = MessageShape<'KeyPress', { key: KeyInput }>;
 export type Wheel = MessageShape<'Wheel', { x: number; y: number; dx: number; dy: number }>;
 
-export type Message = Click | Cursor | KeyCmd | KeyPress | Wheel;
+export type Test = KeyPress | Mode | Wheel;
+export type Message = Click | Cursor | KeyCmd | KeyPress | Mode | Wheel | Which;
