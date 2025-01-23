@@ -2,8 +2,17 @@ import type { SyncMode } from '../constants.js';
 
 type TabState = { syncMode: SyncMode };
 
+export async function clearTabState(): Promise<void> {
+  return chrome.storage.session.remove('tabState');
+}
+
 export async function getTabState(tabId?: number): Promise<TabState | undefined> {
+  // we need an id of an actual existing tab
   if (tabId === undefined) return;
+  const tab = await chrome.tabs.get(tabId);
+  if (tab === undefined) await removeTabState(tabId);
+
+  // read the tab state from session storage
   const { tabState = {} } = await chrome.storage.session.get('tabState');
   return tabState[tabId];
 }
@@ -21,8 +30,17 @@ export async function removeTabState(tabId: number): Promise<void> {
 }
 
 // set the extension icon
-export async function setIcon(tabId: number, icon: 'disabled' | 'off' | 'receive' | 'send') {
-  return chrome.action?.setIcon({
+export async function setIcon(
+  tabId: number | undefined,
+  icon: 'disabled' | 'off' | 'receive' | 'send',
+) {
+  // we need an id of an actual existing tab
+  if (tabId === undefined) return;
+  const tab = await chrome.tabs.get(tabId);
+  if (tab === undefined) return;
+
+  // set the icon for the tab
+  chrome.action?.setIcon({
     tabId,
     path: {
       16: `icons/icon-${icon}-16.png`,

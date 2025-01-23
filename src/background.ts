@@ -1,22 +1,24 @@
-import type { Browser, KeyInput } from 'puppeteer-core/lib/esm/puppeteer/puppeteer-core-browser.js';
-import {
-  connect,
-  ExtensionTransport,
-} from 'puppeteer-core/lib/esm/puppeteer/puppeteer-core-browser.js';
+import type { KeyInput } from 'puppeteer-core/lib/esm/puppeteer/puppeteer-core-browser.js';
 
-import { getTabState, removeTabState, setIcon, setTabState } from './background/tab-state.js';
+import {
+  deleteReceivingTab,
+  invokeReceivingTabs,
+  setReceivingTab,
+} from './background/receiving-tabs.js';
+import {
+  clearTabState,
+  getTabState,
+  removeTabState,
+  setIcon,
+  setTabState,
+} from './background/tab-state.js';
 import type { Message, Mode, SyncMode } from './constants.js';
 import { ALLOWED_PROTOCOLS, PREFIX, prefix, SYNC_MODE } from './constants.js';
 
-// while individual tab states are persisted in session storage,
-// the currently receiving tabs are stored in memory along with
-// the attached puppeteer instances
-const receivingTabs = new Map<number, Browser>();
-
-// set the extension mode
+// set and store the mode of the tab and connect puppeteer if necessary
 export async function setSyncMode(tabId: number, mode: SyncMode) {
   // skip tabs with not allowed protocols in url
-  const { url } = await chrome.tabs.get(tabId)!;
+  const { url } = await chrome.tabs.get(tabId);
   const isAllowedUrl = ALLOWED_PROTOCOLS.some(protocol => url?.startsWith(protocol));
   if (!isAllowedUrl) {
     // remove the tab state and set the icon to disabled
@@ -25,23 +27,22 @@ export async function setSyncMode(tabId: number, mode: SyncMode) {
   }
 
   if (mode === 'receive') {
-    // connect puppeteer to the receiving tab and prevent the viewport from being resized
-    // https://github.com/puppeteer/puppeteer/issues/3688#issuecomment-453218745
-    const transport = await ExtensionTransport.connectTab(tabId);
-    const browser = await connect({ transport, defaultViewport: null });
-    browser.on('disconnected', () => setSyncMode(tabId, 'off'));
-    receivingTabs.set(tabId, browser);
+    await setReceivingTab(tabId, () => setSyncMode(tabId, 'off'));
   } else {
-    await receivingTabs.get(tabId)?.disconnect();
-    receivingTabs.delete(tabId);
+    deleteReceivingTab(tabId);
   }
 
-  // notify the content script about the new mode
-  chrome.tabs.sendMessage(tabId, { type: 'MICE_Mode', payload: { mode } } as Mode);
+  // notify the content script about the eventually changed mode
+  // if it can be reached; encountering stalled or inactive tabs
+  try {
+    await chrome.tabs.sendMessage(tabId, { type: 'MICE_Mode', payload: { mode } } as Mode);
+  } catch (error) {
+    // no-op
+  }
 
-  // set the new state and icon
+  // set the (new) state and icon
   await setTabState(tabId, { syncMode: mode });
-  return setIcon(tabId, mode);
+  await setIcon(tabId, mode);
 }
 
 // prepare the tab state, by default new tabs are in off mode
@@ -54,8 +55,7 @@ export async function initializeTabState(tabId: number) {
 
 // remove the tab state and clean up when the tab is closed
 chrome.tabs.onRemoved.addListener(async tabId => {
-  await receivingTabs.get(tabId)?.disconnect();
-  receivingTabs.delete(tabId);
+  deleteReceivingTab(tabId);
   removeTabState(tabId);
 });
 
@@ -64,6 +64,7 @@ chrome.tabs.onCreated.addListener(async tab => initializeTabState(tab.id!));
 chrome.tabs.onActivated.addListener(async ({ tabId }) => initializeTabState(tabId));
 chrome.tabs.onUpdated.addListener(async tabId => initializeTabState(tabId));
 chrome.runtime.onInstalled.addListener(async () => {
+  await clearTabState();
   const tabs = await chrome.tabs.query({});
   return Promise.all(tabs.map(tab => initializeTabState(tab.id!)));
 });
@@ -80,25 +81,26 @@ chrome.action?.onClicked.addListener(async tab => {
 });
 
 // proxy messages from sending to receiving content scripts
-chrome.runtime.onMessage.addListener((message: Message, { tab }, respond: (r: object) => void) => {
+chrome.runtime.onMessage.addListener((message: Message, { tab }) => {
   // filter out events from foreign scopes
   if (!message.type.startsWith(PREFIX)) return;
 
   switch (message.type) {
-    // deliver the requested mode for the tab
+    // deliver the requested mode for the tab when requested; this
+    // also means, that the tab could have been refreshed / reloaded
     case prefix('Which'):
-      if (!tab) return false;
+      if (!tab?.id) return false;
       (async () => {
+        // do not respond directly, to allow refreshing the extension icon
+        // or the puppeteer connection by the `setSyncMode` function
         const { syncMode = 'off' } = (await getTabState(tab.id)) ?? {};
-        respond({ type: 'MICE_Mode', payload: { mode: syncMode } } satisfies Mode);
+        setSyncMode(tab.id!, syncMode);
       })();
-
-      // no need to go further, just wait for the async response
-      return true;
+      break;
 
     // handle cursor position
     case prefix('Cursor'):
-      receivingTabs.forEach(async (browser, tabId) => {
+      invokeReceivingTabs(async (browser, tabId) => {
         // forward the message to all receiving tabs to show the ghost cursor
         chrome.tabs.sendMessage(tabId, message);
 
@@ -111,7 +113,7 @@ chrome.runtime.onMessage.addListener((message: Message, { tab }, respond: (r: ob
 
     // simulate click at position using puppeteer
     case prefix('Click'):
-      receivingTabs.forEach(async browser => {
+      invokeReceivingTabs(async browser => {
         const [page] = await browser.pages();
         const { x, y } = message.payload;
         await page.mouse.click(x, y);
@@ -120,7 +122,7 @@ chrome.runtime.onMessage.addListener((message: Message, { tab }, respond: (r: ob
 
     // handle keyboard commands
     case prefix('KeyCmd'):
-      receivingTabs.forEach(async (browser, tabId) => {
+      invokeReceivingTabs(async (browser, tabId) => {
         // forward the message to all receiving tabs to show an input hint
         chrome.tabs.sendMessage(tabId, message);
 
@@ -141,7 +143,7 @@ chrome.runtime.onMessage.addListener((message: Message, { tab }, respond: (r: ob
 
     // simulate key press using puppeteer
     case prefix('KeyPress'):
-      receivingTabs.forEach(async (browser, tabId) => {
+      invokeReceivingTabs(async (browser, tabId) => {
         // forward the message to all receiving tabs to hide ghost cursor
         chrome.tabs.sendMessage(tabId, message);
 
@@ -153,7 +155,7 @@ chrome.runtime.onMessage.addListener((message: Message, { tab }, respond: (r: ob
 
     // simulate scroll at position using puppeteer
     case prefix('Wheel'):
-      receivingTabs.forEach(async browser => {
+      invokeReceivingTabs(async browser => {
         const [page] = await browser.pages();
         const { x, y, dx, dy } = message.payload;
         await page.mouse.move(x, y);
