@@ -1,4 +1,4 @@
-import type { Message, Mode, SyncMode, Which } from './constants.js';
+import type { Message, SyncMode, Which } from './constants.js';
 import { startReceive, stopReceive } from './mode/receive.js';
 import { startSend, stopSend } from './mode/send.js';
 
@@ -10,20 +10,17 @@ function handleModeChange(mode: SyncMode) {
     case 'send':
       stopReceive();
       startSend();
-      console.info('MICE is sending');
       break;
 
     case 'receive':
       stopSend();
       startReceive();
-      console.info('MICE is receiving');
       break;
 
     case 'off':
     default:
       stopReceive();
       stopSend();
-      console.info('MICE is off');
       break;
   }
 }
@@ -32,6 +29,7 @@ function handleModeChange(mode: SyncMode) {
 chrome.runtime.onMessage.addListener((message: Message) => {
   if (message.type === 'MICE_Mode') {
     handleModeChange(message.payload.mode);
+    console.info(`[MICE] mode: ${message.payload.mode}`);
   }
   // no response to wait for
   return false;
