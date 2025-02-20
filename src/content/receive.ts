@@ -65,6 +65,10 @@ export function startReceive() {
       }
 
       case 'MICE_KeyCmd': {
+        if (window.___MICE_debug) {
+          console.info(`[MICE] key: ${message.payload}`);
+        }
+
         // keyboard interaction hide cursor
         cursor.style.opacity = '0';
 
