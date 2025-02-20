@@ -4,6 +4,7 @@ import { startSend, stopSend } from './content/send.js';
 
 declare global {
   interface Window {
+    ___MICE_debug?: true;
     ___MICE_mode?: SyncMode;
   }
 }
@@ -44,7 +45,10 @@ document.addEventListener(
     chrome.runtime.onMessage.addListener((message: Message) => {
       if (message.type === 'MICE_Mode') {
         handleModeChange(message.payload.mode);
-        console.info(`[MICE] mode: ${message.payload.mode}`);
+
+        if (window.___MICE_debug) {
+          console.info(`[MICE] mode: ${message.payload.mode}`);
+        }
       }
       // no response to wait for
       return false;
