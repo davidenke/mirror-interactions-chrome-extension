@@ -33,7 +33,7 @@ export function startReceive() {
   document.body.appendChild(cursor);
 
   let kbdTimeout: number;
-  const kbd = document.createElement('kbd');
+  const kbd = document.createElement('div');
   kbd.style.position = 'fixed';
   kbd.style.inset = 'auto auto 20px 20px';
   kbd.style.padding = '2px 5px';
@@ -74,7 +74,21 @@ export function startReceive() {
         if (ctrlKey) keys.push('Control');
         if (metaKey) keys.push('Meta');
         if (shiftKey) keys.push('Shift');
-        kbd.innerHTML = keys.map(key => `<kbd>${key}</kbd>`).join(' + ');
+
+        kbd.innerHTML = keys
+          .map(key => {
+            let label: string = key;
+            if (key === ' ') label = 'Space';
+            if (key === 'Enter') label = '↵';
+            const k = document.createElement('kbd');
+            k.style.all = 'unset';
+            k.style.color = 'inherit';
+            k.style.display = 'inline-block';
+            k.style.font = 'inherit';
+            k.textContent = label;
+            return k.outerHTML;
+          })
+          .join(' + ');
         kbd.style.opacity = '1';
 
         window.clearTimeout(kbdTimeout);
