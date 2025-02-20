@@ -1,3 +1,3 @@
-import config from '@enke.dev/lint';
+import config from '@davidenke/lint';
 
 export default config;
