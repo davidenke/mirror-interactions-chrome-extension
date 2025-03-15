@@ -9,15 +9,13 @@ declare global {
   }
 }
 
-// set initial mode to off
-if (!window.___MICE_mode) window.___MICE_mode = 'off';
-
 // depending on the mode, start or stop sending or receiving events; they will
 // be called an unpredictable amount of times, thus, the content script functions
 // check themselves if they are already running in the context, or not
 function handleModeChange(mode: SyncMode) {
   // skip duplicate mode changes
   if (window.___MICE_mode === mode) return;
+  window.___MICE_mode = mode;
 
   switch (mode) {
     case 'send':
@@ -41,6 +39,9 @@ function handleModeChange(mode: SyncMode) {
 document.addEventListener(
   'DOMContentLoaded',
   () => {
+    // set initial mode to off
+    if (!window.___MICE_mode) window.___MICE_mode = 'off';
+
     // when the mode changes, handle it
     chrome.runtime.onMessage.addListener((message: Message) => {
       if (message.type === 'MICE_Mode') {

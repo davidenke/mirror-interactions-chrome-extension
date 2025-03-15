@@ -35,6 +35,7 @@ export async function setSyncMode(tabId: number, mode: SyncMode) {
   // notify the content script about the eventually changed mode
   // if it can be reached; encountering stalled or inactive tabs
   try {
+    console.log('MICE_Mode', { mode });
     await chrome.tabs.sendMessage(tabId, { type: 'MICE_Mode', payload: { mode } } as Mode);
   } catch (error) {
     // no-op

@@ -14,12 +14,15 @@
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "2.0.0-beta.30",
-    "@davidenke/lint": "0.5.1",
-    "@types/node": "22.10.7",
+    "@davidenke/lint": "0.5.2",
+    "@playwright/test": "1.51.0",
+    "@types/node": "22.13.10",
     "autoprefixer": "10.4.20",
     "chrome-types": "0.1.333",
     "eslint": "9.18.0",
+    "eslint-plugin-playwright": "2.2.0",
     "jiti": "2.4.2",
+    "playwright": "1.51.0",
     "prettier": "3.4.2",
     "typescript": "5.7.3",
     "vite": "6.0.11",
@@ -27,6 +30,7 @@
   },
   "scripts": {
     "lint": "eslint",
+    "test": "playwright test -c playwright.config.ts",
     "dev": "vite",
     "build": "vite build"
   }
