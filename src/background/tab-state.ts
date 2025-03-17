@@ -2,6 +2,8 @@ import type { SyncMode } from '../constants.js';
 
 export type TabState = { syncMode: SyncMode };
 
+export const ICON_SIZES = [16, 32, 48, 128] as const;
+
 export async function clearTabState(): Promise<void> {
   return chrome.storage.session.remove('tabState');
 }
@@ -42,11 +44,9 @@ export async function setIcon(
   // set the icon for the tab
   chrome.action?.setIcon({
     tabId,
-    path: {
-      16: `icons/icon-${icon}-16.png`,
-      32: `icons/icon-${icon}-32.png`,
-      48: `icons/icon-${icon}-48.png`,
-      128: `icons/icon-${icon}-128.png`,
-    },
+    path: ICON_SIZES.reduce(
+      (icons, size) => ({ ...icons, [size]: `icons/icon-${icon}-${size}.png` }),
+      {} as Record<number, string>,
+    ),
   });
 }
