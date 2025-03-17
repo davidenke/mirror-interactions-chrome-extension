@@ -8,6 +8,9 @@ declare global {
   }
 }
 
+export const MICE_CURSOR_ID = '___MICE_cursor';
+export const MICE_KBD_ID = '___MICE_kbd';
+
 /**
  * This function must be self contained, as it is injected in the
  * page context as content script; to use imports and/or external
@@ -20,6 +23,7 @@ export function startReceive() {
   // prepare ghosts
   let cursorTimeout: number;
   const cursor = document.createElement('div');
+  cursor.id = MICE_CURSOR_ID;
   cursor.style.position = 'fixed';
   cursor.style.pointerEvents = 'none';
   cursor.style.width = '20px';
@@ -34,6 +38,7 @@ export function startReceive() {
 
   let kbdTimeout: number;
   const kbd = document.createElement('div');
+  kbd.id = MICE_KBD_ID;
   kbd.style.position = 'fixed';
   kbd.style.inset = 'auto auto 20px 20px';
   kbd.style.padding = '2px 5px';
@@ -115,8 +120,8 @@ export function startReceive() {
   window.___MICE_receive = () => {
     // remove all listeners and ghosts
     chrome.runtime.onMessage.removeListener(receiveListener);
-    cursor.remove();
-    kbd.remove();
+    document.getElementById(MICE_CURSOR_ID)?.remove();
+    document.getElementById(MICE_KBD_ID)?.remove();
 
     // Honestly, I didn't touch anything here...
     delete window.___MICE_receive;
