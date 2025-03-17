@@ -1,6 +1,6 @@
 import type { SyncMode } from '../constants.js';
 
-type TabState = { syncMode: SyncMode };
+export type TabState = { syncMode: SyncMode };
 
 export async function clearTabState(): Promise<void> {
   return chrome.storage.session.remove('tabState');
