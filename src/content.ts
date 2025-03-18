@@ -36,27 +36,23 @@ function handleModeChange(mode: SyncMode) {
   }
 }
 
-document.addEventListener(
-  'DOMContentLoaded',
-  () => {
-    // set initial mode to off
-    if (!window.___MICE_mode) window.___MICE_mode = 'off';
+(() => {
+  // set initial mode to off
+  if (!window.___MICE_mode) window.___MICE_mode = 'off';
 
-    // when the mode changes, handle it
-    chrome.runtime.onMessage.addListener((message: Message) => {
-      if (message.type === 'MICE_Mode') {
-        handleModeChange(message.payload.mode);
+  // when the mode changes, handle it
+  chrome.runtime.onMessage.addListener((message: Message) => {
+    if (message.type === 'MICE_Mode') {
+      handleModeChange(message.payload.mode);
 
-        if (window.___MICE_debug) {
-          console.info(`[MICE] mode: ${message.payload.mode}`);
-        }
+      if (window.___MICE_debug) {
+        console.info(`[MICE] mode: ${message.payload.mode}`);
       }
-      // no response to wait for
-      return false;
-    });
+    }
+    // no response to wait for
+    return false;
+  });
 
-    // ask initially for the current mode
-    chrome.runtime.sendMessage({ type: 'MICE_Which' } as Which);
-  },
-  { once: true, passive: true },
-);
+  // ask initially for the current mode
+  chrome.runtime.sendMessage({ type: 'MICE_Which' } as Which);
+})();
