@@ -116,8 +116,8 @@ chrome.runtime.onMessage.addListener((message: Message, { tab }) => {
     case prefixed('Click'):
       invokeReceivingTabs(async browser => {
         const [page] = await browser.pages();
-        const { x, y } = message.payload;
-        await page.mouse.click(x, y);
+        const { x, y, count } = message.payload;
+        await page.mouse.click(x, y, { count });
       });
       break;
 

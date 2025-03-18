@@ -30,8 +30,9 @@ export function startSend() {
 
   // capture click or touch events and send them to worker
   listeners.set('click', (event: MouseEvent | TouchEvent) => {
+    const count = event.detail;
     const { clientX: x, clientY: y } = 'touches' in event ? event.touches[0] : event;
-    chrome.runtime.sendMessage({ type: 'MICE_Click', payload: { x, y } } satisfies Click);
+    chrome.runtime.sendMessage({ type: 'MICE_Click', payload: { x, y, count } } satisfies Click);
   });
 
   listeners.set('keypress', (event: KeyboardEvent) => {

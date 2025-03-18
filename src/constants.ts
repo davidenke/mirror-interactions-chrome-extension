@@ -25,7 +25,7 @@ type MessageShape<T extends string, P extends object | undefined> = {
 export type Mode = MessageShape<'Mode', { mode: SyncMode }>;
 export type Which = MessageShape<'Which', undefined>;
 
-export type Click = MessageShape<'Click', { x: number; y: number }>;
+export type Click = MessageShape<'Click', { x: number; y: number; count: number }>;
 export type Cursor = MessageShape<'Cursor', { x: number; y: number }>;
 export type KeyCmd = MessageShape<
   'KeyCmd',
