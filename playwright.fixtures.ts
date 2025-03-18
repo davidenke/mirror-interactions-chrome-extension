@@ -1,14 +1,16 @@
 import { env } from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-import type { BrowserContext, Worker } from '@playwright/test';
-import { chromium, test as base } from '@playwright/test';
+import type { BrowserContext, Page, Worker } from '@playwright/test';
+import { chromium, expect as baseExpect, test as baseTest } from '@playwright/test';
 
-import type { TabState } from './src/background/tab-state.js';
+import type { SyncMode } from './src/constants.js';
+import { SYNC_MODE } from './src/constants.js';
 
 env.PW_CHROMIUM_ATTACH_TO_OTHER = '1';
+// env.PW_DEBUG = '1';
 
-export class MirrorExtension {
+export class MirrorExtensionFixture {
   readonly #background: Worker;
 
   constructor(
@@ -21,40 +23,59 @@ export class MirrorExtension {
   /**
    * Conveniently access the current tab state
    */
-  async getTabState(): Promise<TabState> {
-    return this.#background.evaluate(
-      () =>
-        new Promise(resolve =>
-          chrome.tabs.query({ active: true }, async ([tab]) => {
-            const { tabState } = await chrome.storage.session.get('tabState');
-            resolve(tabState[tab.id!]);
-          }),
-        ),
+  async getSyncMode(): Promise<SyncMode> {
+    const tabId = await this.#background.evaluate(async () => {
+      const [{ id }] = await chrome.tabs.query({ active: true });
+      return id;
+    });
+    if (!tabId) throw new Error('No active tab found');
+    const { tabState } = await this.#background.evaluate(() =>
+      chrome.storage.session.get('tabState'),
     );
+    return tabState[tabId]?.syncMode;
+  }
+
+  /**
+   * Reset the current tab state (for cleanup)
+   */
+  teardown(): Promise<void> {
+    return this.#background.evaluate(() => chrome.storage.session.remove('tabState'));
   }
 
   /**
    * Cycles through the extension modes, from 'off' to 'send' to 'receive'.
    */
-  async clickIcon(): Promise<chrome.tabs.Tab> {
-    return this.#background.evaluate(
-      () =>
-        new Promise(resolve => {
-          chrome.tabs.query({ active: true }, ([tab]) => {
-            // clicking the icon will somehow trigger a storage event we have to wait for
-            chrome.storage.session.onChanged.addListener(() => resolve(tab));
-            // force the click event by dispatching it (undocumented and untyped API)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (chrome.action.onClicked as any).dispatch(tab);
-          });
-        }),
-    );
+  async clickIcon(waitAfter = 1100): Promise<number> {
+    const tabId = await this.#background.evaluate(async () => {
+      const [tab] = await chrome.tabs.query({ active: true });
+      await chrome.action.onClicked.dispatch(tab);
+      return tab.id;
+    });
+    if (!tabId) throw new Error('No active tab found');
+    await new Promise(resolve => setTimeout(resolve, waitAfter));
+    return tabId;
+  }
+
+  /**
+   * As the extension cycles through the modes, we provide this util to chose a specific one.
+   * It simply clicks the icon until the desired mode is reached.
+   * To prevent infinite loops, the amount of tries can be limited. By default, it's the amount of available modes +1.
+   */
+  async setMode(mode: SyncMode, tries: number = SYNC_MODE.length + 1): Promise<void> {
+    if (tries <= 0) throw new Error('Could not set mode');
+
+    const syncMode = await this.getSyncMode();
+    if (syncMode === mode) return;
+
+    await this.clickIcon();
+    return this.setMode(mode, --tries);
   }
 }
 
-export const test = base.extend<{
+export const test = baseTest.extend<{
   context: BrowserContext;
-  extension: MirrorExtension;
+  extension: MirrorExtensionFixture;
+  setupPages: (path: string) => Promise<{ sender: Page; receiver: Page }>;
 }>({
   // prepare a unique context with our extension loaded
   // eslint-disable-next-line no-empty-pattern
@@ -68,57 +89,93 @@ export const test = base.extend<{
         `--disable-extensions-except=${pathToExtension}`,
         `--load-extension=${pathToExtension}`,
       ],
-      headless: false,
+      headless: !env.PW_DEBUG,
     });
 
-    // extension is after the blank ghost page
-    // see issue https://github.com/microsoft/playwright-python/issues/689
-    const [page] = context.pages();
+    if (env.PW_DEBUG) {
+      // extension is after the blank ghost page
+      // see issue https://github.com/microsoft/playwright-python/issues/689
+      const [page] = context.pages();
 
-    // got to the extensions page
-    await page.goto('chrome://extensions');
+      // got to the extensions page
+      await page.goto('chrome://extensions');
 
-    // activate developer mode
-    const developerMode = page.getByRole('button', { name: 'Entwicklermodus' });
-    const developerModeActive = await developerMode.getAttribute('aria-pressed');
-    if (developerModeActive === 'false') await developerMode.click();
+      // activate developer mode
+      const developerMode = page.getByRole('button', { name: 'Entwicklermodus' });
+      const developerModeActive = await developerMode.getAttribute('aria-pressed');
+      if (developerModeActive === 'false') await developerMode.click();
 
-    // go to the extensions settings page
-    await page
-      .locator('extensions-item')
-      .filter({ hasText: 'Mirror viewport interactions' })
-      .getByRole('button', { name: 'Details' })
-      .click();
+      // go to the extensions settings page
+      await page
+        .locator('extensions-item')
+        .filter({ hasText: 'Mirror viewport interactions' })
+        .getByRole('button', { name: 'Details' })
+        .click();
 
-    // pin the extension to the toolbar
-    const pinExtension = page.getByRole('button', { name: 'An Symbolleiste anpinnen' });
-    const extensionPinned = await pinExtension.getAttribute('aria-pressed');
-    if (extensionPinned === 'false') await pinExtension.click();
-
-    // allow extension in incognito mode
-    const incognitoMode = page.getByRole('button', { name: 'Im Inkognitomodus zulassen' });
-    const incognitoModeAllowed = await incognitoMode.getAttribute('aria-pressed');
-    if (incognitoModeAllowed === 'false') await incognitoMode.click();
+      // pin the extension to the toolbar
+      const pinExtension = page.getByRole('button', { name: 'An Symbolleiste anpinnen' });
+      const extensionPinned = await pinExtension.getAttribute('aria-pressed');
+      if (extensionPinned === 'false') await pinExtension.click();
+    }
 
     // redirect /test to the static test file
-    await context.route('/test', route =>
-      route.fulfill({ path: fileURLToPath(new URL('./playwright.test.html', import.meta.url)) }),
-    );
+    await context.route('/test', route => {
+      if (route.request().resourceType() !== 'document') return;
+      route.fulfill({ path: fileURLToPath(new URL('./playwright.test.html', import.meta.url)) });
+    });
 
     // run tests
     await use(context);
+
+    // teardown
     await context.close();
   },
 
   // retrieve the extension id from the background page
   extension: async ({ context }, use) => {
+    // get the background page
     let [background] = context.serviceWorkers();
     if (!background) background = await context.waitForEvent('serviceworker');
 
+    // prepare the fixture
     const [, , extensionId] = background.url().split('/');
-    const extension = new MirrorExtension(extensionId, background);
+    const extension = new MirrorExtensionFixture(extensionId, background);
+
+    // run tests
     await use(extension);
+  },
+
+  // provide a function to setup test pages; a sender and a receiver
+  setupPages: async ({ context, extension, page }, use) => {
+    let sender: Page | undefined;
+    let receiver: Page | undefined;
+
+    // pass a factory function to create the sender and receiver pages to the tests
+    await use(async (path: string) => {
+      // prepare sender
+      sender = page;
+      await sender.bringToFront();
+      await sender.goto(path);
+      await extension.setMode('send');
+
+      // prepare receiver
+      receiver = await context.newPage();
+      await receiver.waitForLoadState();
+      await receiver.bringToFront();
+      await receiver.goto(path);
+      await extension.setMode('receive');
+
+      // deliver the pages
+      return { sender, receiver };
+    });
+
+    // teardown
+    await extension.teardown();
+    await receiver?.close();
+    await sender?.close();
+    await context.close();
+    await context.browser()?.close();
   },
 });
 
-export const expect = test.expect;
+export const expect = baseExpect.extend({});

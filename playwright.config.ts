@@ -11,7 +11,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!env.CI,
   retries: env.CI ? 2 : 0,
-  workers: 1,
+  workers: 4,
   reporter: env.CI
     ? [['html', { outputFolder: 'reports/html', open: 'never' }]]
     : // use console, either `dot`, `line` or `list`
