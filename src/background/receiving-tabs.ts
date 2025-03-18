@@ -15,9 +15,9 @@ export async function cleanupReceivingTabs() {
     _receivingTabs.keys().map(async tabId => {
       try {
         const tab = await chrome.tabs.get(tabId);
-        if (tab === undefined) deleteReceivingTab(tabId);
+        if (tab === undefined) await disconnectReceivingTab(tabId);
       } catch (error) {
-        deleteReceivingTab(tabId);
+        await disconnectReceivingTab(tabId);
       }
     }),
   );
@@ -36,9 +36,9 @@ export async function setReceivingTab(tabId: number, disconnect: () => void) {
   _receivingTabs.set(tabId, browser);
 }
 
-export function deleteReceivingTab(tabId: number) {
+export async function disconnectReceivingTab(tabId: number) {
   if (_receivingTabs.has(tabId)) console.info(`[MICE] loosing strings: ${tabId}`);
-  _receivingTabs.get(tabId)?.disconnect();
+  await _receivingTabs.get(tabId)?.disconnect();
   _receivingTabs.delete(tabId);
 }
 

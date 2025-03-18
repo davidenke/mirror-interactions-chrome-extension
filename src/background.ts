@@ -1,7 +1,7 @@
 import type { KeyInput } from 'puppeteer-core/lib/esm/puppeteer/puppeteer-core-browser.js';
 
 import {
-  deleteReceivingTab,
+  disconnectReceivingTab,
   invokeReceivingTabs,
   setReceivingTab,
 } from './background/receiving-tabs.js';
@@ -29,7 +29,7 @@ export async function setSyncMode(tabId: number, mode: SyncMode) {
   if (mode === 'receive') {
     await setReceivingTab(tabId, () => setSyncMode(tabId, 'off'));
   } else {
-    deleteReceivingTab(tabId);
+    disconnectReceivingTab(tabId);
   }
 
   // notify the content script about the eventually changed mode
@@ -56,7 +56,7 @@ export async function initializeTabState(tabId: number) {
 
 // remove the tab state and clean up when the tab is closed
 chrome.tabs.onRemoved.addListener(async tabId => {
-  deleteReceivingTab(tabId);
+  disconnectReceivingTab(tabId);
   removeTabState(tabId);
 });
 
