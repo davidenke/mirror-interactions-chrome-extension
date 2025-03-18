@@ -13,7 +13,7 @@ import {
   setTabState,
 } from './background/tab-state.js';
 import type { Message, Mode, SyncMode } from './constants.js';
-import { ALLOWED_PROTOCOLS, PREFIX, prefix, SYNC_MODE } from './constants.js';
+import { ALLOWED_PROTOCOLS, PREFIX, prefixed, SYNC_MODE } from './constants.js';
 
 // set and store the mode of the tab and connect puppeteer if necessary
 export async function setSyncMode(tabId: number, mode: SyncMode) {
@@ -89,7 +89,7 @@ chrome.runtime.onMessage.addListener((message: Message, { tab }) => {
   switch (message.type) {
     // deliver the requested mode for the tab when requested; this
     // also means, that the tab could have been refreshed / reloaded
-    case prefix('Which'):
+    case prefixed('Which'):
       if (!tab?.id) return false;
       (async () => {
         // do not respond directly, to allow refreshing the extension icon
@@ -100,7 +100,7 @@ chrome.runtime.onMessage.addListener((message: Message, { tab }) => {
       break;
 
     // handle cursor position
-    case prefix('Cursor'):
+    case prefixed('Cursor'):
       invokeReceivingTabs(async (browser, tabId) => {
         // forward the message to all receiving tabs to show the ghost cursor
         chrome.tabs.sendMessage(tabId, message);
@@ -113,7 +113,7 @@ chrome.runtime.onMessage.addListener((message: Message, { tab }) => {
       break;
 
     // simulate click at position using puppeteer
-    case prefix('Click'):
+    case prefixed('Click'):
       invokeReceivingTabs(async browser => {
         const [page] = await browser.pages();
         const { x, y } = message.payload;
@@ -122,7 +122,7 @@ chrome.runtime.onMessage.addListener((message: Message, { tab }) => {
       break;
 
     // handle keyboard commands
-    case prefix('KeyCmd'):
+    case prefixed('KeyCmd'):
       invokeReceivingTabs(async (browser, tabId) => {
         // forward the message to all receiving tabs to show an input hint
         chrome.tabs.sendMessage(tabId, message);
@@ -143,7 +143,7 @@ chrome.runtime.onMessage.addListener((message: Message, { tab }) => {
       break;
 
     // simulate key press using puppeteer
-    case prefix('KeyPress'):
+    case prefixed('KeyPress'):
       invokeReceivingTabs(async (browser, tabId) => {
         // forward the message to all receiving tabs to hide ghost cursor
         chrome.tabs.sendMessage(tabId, message);
@@ -155,7 +155,7 @@ chrome.runtime.onMessage.addListener((message: Message, { tab }) => {
       break;
 
     // simulate scroll at position using puppeteer
-    case prefix('Wheel'):
+    case prefixed('Wheel'):
       invokeReceivingTabs(async browser => {
         const [page] = await browser.pages();
         const { x, y, dx, dy } = message.payload;

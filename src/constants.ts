@@ -15,7 +15,7 @@ export type SyncMode = (typeof SYNC_MODE)[number];
 export const PREFIX = 'MICE_' as const;
 export type Prefixed<T extends string> = `${typeof PREFIX}${T}`;
 export type Unfixed<T extends string> = T extends `${typeof PREFIX}${infer P}` ? P : never;
-export const prefix = <T extends Unfixed<Message['type']>>(t: T): Prefixed<T> => `${PREFIX}${t}`;
+export const prefixed = <T extends Unfixed<Message['type']>>(t: T): Prefixed<T> => `${PREFIX}${t}`;
 
 type MessageShape<T extends string, P extends object | undefined> = {
   type: Prefixed<T>;
