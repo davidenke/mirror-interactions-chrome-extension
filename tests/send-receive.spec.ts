@@ -1,9 +1,5 @@
 import { expect, test } from '../playwright.fixtures.js';
 
-// - [x] reflects mouse position
-// - [x] reflects text inputs
-// - [x] checks checkboxes on click
-// - [ ] selects text on double click
 // - [ ] follows tab index in both directions
 // - [ ] scrolls to to a specific position
 // - [ ] writes characters with modifiers
@@ -59,4 +55,34 @@ test('checks checkboxes on click', async ({ setupPages }) => {
   // check the receiver
   await receiver.bringToFront();
   await expect(receiver.getByRole('checkbox')).toBeChecked();
+});
+
+test('double click selects single word', async ({ setupPages }) => {
+  const { sender, receiver } = await setupPages('/test');
+  await sender.bringToFront();
+
+  // click headline twice with a simulated mouse click (to be mirrored)
+  await sender.getByRole('heading').click({ clickCount: 2, delay: 20 });
+  // wait for the click events to be processed
+  await sender.waitForTimeout(200);
+
+  // check the receiver
+  await receiver.bringToFront();
+  const selection = await receiver.evaluate(() => document.getSelection()?.toString());
+  expect(selection).toBe('World');
+});
+
+test('triple click selects whole text', async ({ setupPages }) => {
+  const { sender, receiver } = await setupPages('/test');
+  await sender.bringToFront();
+
+  // click headline thrice with a simulated mouse click (to be mirrored)
+  await sender.getByRole('heading').click({ clickCount: 3, delay: 20 });
+  // wait for the click events to be processed
+  await sender.waitForTimeout(200);
+
+  // check the receiver
+  await receiver.bringToFront();
+  const selection = await receiver.evaluate(() => document.getSelection()?.toString());
+  expect(selection).toBe('Hello World!\n');
 });
