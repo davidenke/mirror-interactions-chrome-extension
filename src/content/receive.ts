@@ -24,6 +24,8 @@ export function startReceive() {
   let cursorTimeout: number;
   const cursor = document.createElement('div');
   cursor.id = MICE_CURSOR_ID;
+  cursor.role = 'presentation';
+  cursor.ariaLabel = 'cursor';
   cursor.style.position = 'fixed';
   cursor.style.pointerEvents = 'none';
   cursor.style.width = '20px';
