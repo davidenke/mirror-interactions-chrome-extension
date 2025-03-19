@@ -8,7 +8,7 @@ import type { SyncMode } from './src/constants.js';
 import { SYNC_MODE } from './src/constants.js';
 
 export class MirrorExtensionFixture {
-  readonly #background: Worker;
+  readonly #worker: Worker;
 
   constructor(
     public readonly id: string,
@@ -21,7 +21,7 @@ export class MirrorExtensionFixture {
    * Conveniently access the current tab state
    */
   async getSyncMode(): Promise<SyncMode> {
-    const tabId = await this.#background.evaluate(async () => {
+    const tabId = await this.#worker.evaluate(async () => {
       const [{ id }] = await chrome.tabs.query({ active: true });
       return id;
     });
@@ -43,7 +43,7 @@ export class MirrorExtensionFixture {
    * Cycles through the extension modes, from 'off' to 'send' to 'receive'.
    */
   async clickIcon(waitAfter = 1100): Promise<number> {
-    const tabId = await this.#background.evaluate(async () => {
+    const tabId = await this.#worker.evaluate(async () => {
       const [tab] = await chrome.tabs.query({ active: true });
       await chrome.action.onClicked.dispatch(tab);
       return tab.id;
@@ -131,8 +131,8 @@ export const test = baseTest.extend<{
   // retrieve the extension id from the background page
   extension: async ({ context }, use) => {
     // get the background page
-    let [background] = context.serviceWorkers();
-    if (!background) background = await context.waitForEvent('serviceworker');
+    let [worker] = context.serviceWorkers();
+    if (!worker) worker = await context.waitForEvent('serviceworker');
 
     // prepare the fixture
     const [, , extensionId] = background.url().split('/');
