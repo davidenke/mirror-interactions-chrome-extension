@@ -10,11 +10,30 @@ import { SYNC_MODE } from './src/constants.js';
 export class MirrorExtensionFixture {
   readonly #worker: Worker;
 
-  constructor(
-    public readonly id: string,
-    worker: Worker,
-  ) {
-    this.#background = worker;
+  get id(): string {
+    const [, , extensionId] = this.#worker.url().split('/');
+    return extensionId;
+  }
+
+  /**
+   * Waits for the extension to be ready, as the chrome apis are not available immediately.
+   * Without, one may encounter exceptions like `query is not defined on chrome.tabs`.
+   *
+   * We do so by polling for a known API property to be present in the `chrome` global.
+   */
+  get ready(): Promise<void> {
+    return new Promise(resolve => {
+      const checkReadiness = async () => {
+        const ready = await this.#worker.evaluate(() => 'runtime' in chrome);
+        if (ready) resolve();
+        else setTimeout(checkReadiness, 100);
+      };
+      checkReadiness();
+    });
+  }
+
+  constructor(worker: Worker) {
+    this.#worker = worker;
   }
 
   /**
@@ -26,9 +45,7 @@ export class MirrorExtensionFixture {
       return id;
     });
     if (!tabId) throw new Error('No active tab found');
-    const { tabState } = await this.#background.evaluate(() =>
-      chrome.storage.session.get('tabState'),
-    );
+    const { tabState } = await this.#worker.evaluate(() => chrome.storage.session.get('tabState'));
     return tabState[tabId]?.syncMode;
   }
 
@@ -36,13 +53,15 @@ export class MirrorExtensionFixture {
    * Reset the current tab state (for cleanup)
    */
   teardown(): Promise<void> {
-    return this.#background.evaluate(() => chrome.storage.session.remove('tabState'));
+    return this.#worker.evaluate(() => chrome.storage.session.remove('tabState'));
   }
 
   /**
    * Cycles through the extension modes, from 'off' to 'send' to 'receive'.
+   * @fixme clicking the icon implies some async behavior, which is not
+   *        awaited properly yet, but handled with a timeout...
    */
-  async clickIcon(waitAfter = 1100): Promise<number> {
+  async clickIcon(waitAfter = 1234): Promise<number> {
     const tabId = await this.#worker.evaluate(async () => {
       const [tab] = await chrome.tabs.query({ active: true });
       await chrome.action.onClicked.dispatch(tab);
@@ -126,6 +145,7 @@ export const test = baseTest.extend<{
 
     // teardown
     await context.close();
+    await context.browser()?.close();
   },
 
   // retrieve the extension id from the background page
@@ -135,44 +155,46 @@ export const test = baseTest.extend<{
     if (!worker) worker = await context.waitForEvent('serviceworker');
 
     // prepare the fixture
-    const [, , extensionId] = background.url().split('/');
-    const extension = new MirrorExtensionFixture(extensionId, background);
+    const extension = new MirrorExtensionFixture(worker);
+    await extension.ready;
 
     // run tests
     await use(extension);
-  },
-
-  // provide a function to setup test pages; a sender and a receiver
-  setupPages: async ({ context, extension, page }, use) => {
-    let sender: Page | undefined;
-    let receiver: Page | undefined;
-
-    // pass a factory function to create the sender and receiver pages to the tests
-    await use(async (path: string) => {
-      // prepare sender
-      sender = page;
-      await sender.bringToFront();
-      await sender.goto(path);
-      await extension.setMode('send');
-
-      // prepare receiver
-      receiver = await context.newPage();
-      await receiver.waitForLoadState();
-      await receiver.bringToFront();
-      await receiver.goto(path);
-      await extension.setMode('receive');
-
-      // deliver the pages
-      return { sender, receiver };
-    });
 
     // teardown
     await extension.teardown();
-    await receiver?.close();
-    await sender?.close();
-    await context.close();
-    await context.browser()?.close();
   },
+
+  // provide a function to setup test pages; a sending and a receiving one
+  setupPages: [
+    async ({ context, extension, page }, use) => {
+      let sender: Page | undefined;
+      let receiver: Page | undefined;
+
+      // pass a factory function to create the sender and receiver pages to the tests
+      await use(async (path: string) => {
+        // prepare sender
+        sender = page;
+        await sender.bringToFront();
+        await sender.goto(path);
+        await extension.setMode('send');
+
+        // prepare receiver
+        receiver = await context.newPage();
+        await receiver.bringToFront();
+        await receiver.goto(path);
+        await extension.setMode('receive');
+
+        // deliver the pages
+        return { sender, receiver };
+      });
+
+      // teardown
+      await receiver?.close();
+      await sender?.close();
+    },
+    { scope: 'test', title: 'setup sending and receiving pages' },
+  ],
 });
 
 export const expect = baseExpect.extend({});
