@@ -2,6 +2,9 @@ import { env } from 'node:process';
 
 import { defineConfig } from '@playwright/test';
 
+// env.PW_CHROMIUM_ATTACH_TO_OTHER = '1';
+// env.PW_DEBUG = '1';
+
 // https://playwright.dev/docs/test-configuration
 export default defineConfig({
   testDir: './tests',

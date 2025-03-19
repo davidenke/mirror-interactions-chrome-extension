@@ -7,9 +7,6 @@ import { chromium, expect as baseExpect, test as baseTest } from '@playwright/te
 import type { SyncMode } from './src/constants.js';
 import { SYNC_MODE } from './src/constants.js';
 
-env.PW_CHROMIUM_ATTACH_TO_OTHER = '1';
-// env.PW_DEBUG = '1';
-
 export class MirrorExtensionFixture {
   readonly #background: Worker;
 
