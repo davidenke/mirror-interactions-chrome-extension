@@ -1,17 +1,25 @@
 <h1>Hello World!</h1>
 <p>
   Lorem ipsum dolor sit amet, consectetur adipisicing elit. Ea, voluptates consequatur suscipit quas
-  quo, facilis consectetur, laudantium est eum nihil voluptate. Aliquid excepturi accusantium veniam
-  vel voluptatum repellendus dolorem enim!
+  quo, facilis consectetur, laudantium est eum nihil voluptate.
 </p>
 
 <form>
-  <input name="firstname" />
-  <input name="lastname" />
-  <input name="email" />
+  <label>
+    <span>First Name</span>
+    <input name="firstname" />
+  </label>
+  <label>
+    <span>Last Name</span>
+    <input name="lastname" />
+  </label>
+  <label>
+    <span>Email</span>
+    <input name="email" />
+  </label>
   <label>
     <input type="checkbox" />
-    <span>Accept</span>
+    <span>Accept some stuff</span>
   </label>
   <button type="submit">Submit</button>
 </form>
@@ -30,9 +38,38 @@
     max-width: 20em;
   }
 
-  form {
+  form,
+  label {
     display: flex;
     flex-flow: column nowrap;
+    align-items: start;
+  }
+
+  form {
     gap: 0.5em;
+  }
+
+  label {
+    align-self: stretch;
+
+    &:has([type='checkbox']) {
+      flex-direction: row;
+      gap: 0.25em;
+    }
+  }
+
+  input {
+    display: block;
+
+    &[type='checkbox'] {
+      margin-left: 0;
+    }
+    &:not([type='checkbox']) {
+      width: 100%;
+    }
+  }
+
+  button {
+    align-self: end;
   }
 </style>
